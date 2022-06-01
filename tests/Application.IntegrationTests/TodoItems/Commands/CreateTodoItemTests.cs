@@ -1,7 +1,9 @@
 ﻿using CleanArchitecture.Application.Common.Exceptions;
 using CleanArchitecture.Application.TodoItems.Commands.CreateTodoItem;
 using CleanArchitecture.Application.TodoLists.Commands.CreateTodoList;
+using CleanArchitecture.Domain.Common;
 using CleanArchitecture.Domain.Entities;
+using CleanArchitecture.Domain.Events;
 using FluentAssertions;
 using NUnit.Framework;
 
@@ -47,5 +49,13 @@ public class CreateTodoItemTests : TestBase
         item.Created.Should().BeCloseTo(DateTime.Now, TimeSpan.FromMilliseconds(10000));
         item.LastModifiedBy.Should().BeNull();
         item.LastModified.Should().BeNull();
+
+        var domainEvents = await FindDomainEventsAsync<TodoItemCreatedEvent>();
+        domainEvents.Count().Should().Be(1);
+        
+        var domainEvent = domainEvents.Single();
+        domainEvent.Item.Id.Should().Be(itemId);
+        domainEvent.DateOccurred.Should().BeAfter(WhenTestStarted);
+        domainEvent.DateOccurred.Should().BeBefore(DateTime.Now);
     }
 }

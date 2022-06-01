@@ -1,4 +1,5 @@
 ﻿using CleanArchitecture.Application.Common.Interfaces;
+using CleanArchitecture.Domain.Common;
 using CleanArchitecture.Infrastructure.Identity;
 using CleanArchitecture.Infrastructure.Persistence;
 using CleanArchitecture.WebUI;
@@ -21,6 +22,9 @@ public class Testing
     private static IServiceScopeFactory _scopeFactory = null!;
     private static Checkpoint _checkpoint = null!;
     private static string? _currentUserId;
+    private static readonly List<DomainEvent> _domainEvents = new List<DomainEvent>();
+
+    public static DateTime WhenTestStarted { get; private set; }
 
     [OneTimeSetUp]
     public void RunBeforeAnyTests()
@@ -58,6 +62,25 @@ public class Testing
         services.AddTransient(provider =>
             Mock.Of<ICurrentUserService>(s => s.UserId == _currentUserId));
 
+        var currentDomainEventService = services.FirstOrDefault(d => d.ServiceType == typeof(IDomainEventService));
+
+        if (currentDomainEventService != null)
+        {
+            services.Remove(currentDomainEventService);
+        }
+
+        services.AddTransient(provider =>
+        {
+            var newDomainEventService = Mock.Of<IDomainEventService>();
+
+            Mock.Get(newDomainEventService)
+                .Setup(d => d.Publish(It.IsAny<DomainEvent>()))
+                .Callback<DomainEvent>(x => _domainEvents.Add(x));
+
+            return newDomainEventService;
+        });
+
+
         _scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
 
         _checkpoint = new Checkpoint
@@ -66,6 +89,8 @@ public class Testing
         };
 
         EnsureDatabase();
+
+        WhenTestStarted = DateTime.Now;
     }
 
     private static void EnsureDatabase()
@@ -145,6 +170,12 @@ public class Testing
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         return await context.FindAsync<TEntity>(keyValues);
+    }
+
+    public static Task<IEnumerable<T>> FindDomainEventsAsync<T>()
+        where T : DomainEvent
+    {
+        return Task.FromResult(_domainEvents.Where(x => x.GetType() == typeof(T)).Select(x => (x as T)!));
     }
 
     public static async Task AddAsync<TEntity>(TEntity entity)

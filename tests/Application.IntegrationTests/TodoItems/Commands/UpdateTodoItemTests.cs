@@ -3,6 +3,7 @@ using CleanArchitecture.Application.TodoItems.Commands.CreateTodoItem;
 using CleanArchitecture.Application.TodoItems.Commands.UpdateTodoItem;
 using CleanArchitecture.Application.TodoLists.Commands.CreateTodoList;
 using CleanArchitecture.Domain.Entities;
+using CleanArchitecture.Domain.Events;
 using FluentAssertions;
 using NUnit.Framework;
 
@@ -51,5 +52,9 @@ public class UpdateTodoItemTests : TestBase
         item.LastModifiedBy.Should().Be(userId);
         item.LastModified.Should().NotBeNull();
         item.LastModified.Should().BeCloseTo(DateTime.Now, TimeSpan.FromMilliseconds(10000));
+
+        var createdDomainEvents = await FindDomainEventsAsync<TodoItemCreatedEvent>();
+
+        createdDomainEvents.Count().Should().Be(1);
     }
 }

@@ -30,6 +30,8 @@ public class CreateTodoItemCommandHandler : IRequestHandler<CreateTodoItemComman
             Done = false
         };
 
+        // TODO: inconsistent where domain events are added. Here in command handler.
+        // For UpdateTodoItemCommand it is on entity member done.
         entity.DomainEvents.Add(new TodoItemCreatedEvent(entity));
 
         _context.TodoItems.Add(entity);
